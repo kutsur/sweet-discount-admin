@@ -169,6 +169,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Typeahead search for users to attach as city managers
+         * @description Purpose-built for the city-manager attach flow — always excludes blocked and deleted accounts and always filters by role, unlike GET /admin/users. Kept as a separate endpoint so that one's existing contract does not change under its existing callers. See decisions.md.
+         */
+        get: operations["searchManagerCandidatesAdmin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{id}": {
         parameters: {
             query?: never;
@@ -282,6 +302,109 @@ export interface paths {
         /** Unblock a user account */
         post: operations["unblockUserAdmin"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the cities the marketplace operates in */
+        get: operations["listCitiesPublic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List non-deleted cities (admin view — no manager lists, see decisions.md) */
+        get: operations["listCitiesAdmin"];
+        put?: never;
+        /**
+         * Create a city and auto-assign the creating admin as its manager
+         * @description manager_ids is optional; each id must resolve to an existing, non-blocked, non-deleted user with role=manager, or the whole request fails with 422. The creating admin is always attached as a manager regardless of manager_ids. See decisions.md.
+         */
+        post: operations["createCityAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one city, including a soft-deleted one */
+        get: operations["getCityAdmin"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a city
+         * @description Idempotent — deleting an already-deleted city is still 204.
+         */
+        delete: operations["deleteCityAdmin"];
+        options?: never;
+        head?: never;
+        /**
+         * Partially update a city's name, country_code, or centre point
+         * @description lat and lon must be provided together or not at all. Managers are never changed through this endpoint — see POST/DELETE .../managers.
+         */
+        patch: operations["updateCityAdmin"];
+        trace?: never;
+    };
+    "/admin/cities/{id}/managers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach a manager to a city
+         * @description Idempotent — attaching an already-attached manager returns 200 unchanged. user_id must resolve to an existing, non-blocked, non-deleted user with role=manager.
+         */
+        post: operations["addCityManagerAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/cities/{id}/managers/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Detach a manager from a city
+         * @description Idempotent — removing a user who was never attached is still 204.
+         */
+        delete: operations["removeCityManagerAdmin"];
         options?: never;
         head?: never;
         patch?: never;
@@ -416,7 +539,7 @@ export interface components {
             meta: Record<string, never>;
         };
         /** @enum {string} */
-        Role: "user" | "moderator" | "admin" | "owner";
+        Role: "user" | "moderator" | "manager" | "admin" | "owner";
         AdminUser: {
             /** Format: uuid */
             id: string;
@@ -483,6 +606,105 @@ export interface components {
             data: components["schemas"]["PasswordResetTriggered"];
             meta: Record<string, never>;
         };
+        /** @description The public shape — no managers, no deleted_at (soft-deleted cities never appear here). See decisions.md. */
+        City: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            /** @description ISO 3166-1 alpha-2, e.g. BY. */
+            country_code: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            /** Format: date-time */
+            created_at: string;
+        };
+        CityListEnvelope: {
+            data: components["schemas"]["City"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        /** @description A denormalized city_managers row, joined with the user it points at. */
+        CityManager: {
+            /** Format: uuid */
+            user_id: string;
+            /** Format: email */
+            email: string;
+            display_name: string;
+            /** Format: date-time */
+            assigned_at: string;
+        };
+        /** @description The admin single-resource shape — create, get, and update all return this, with managers populated. See decisions.md. */
+        AdminCity: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            country_code: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            managers: components["schemas"]["CityManager"][];
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminCityEnvelope: {
+            data: components["schemas"]["AdminCity"];
+            meta: Record<string, never>;
+        };
+        /** @description Same columns as AdminCity, minus managers — joining city_managers at list scale is a different cost shape than this row's own columns. See decisions.md. */
+        AdminCityListItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            country_code: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminCityListEnvelope: {
+            data: components["schemas"]["AdminCityListItem"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        CreateCityRequest: {
+            name: string;
+            /** @description Supplied by the admin, not derived from name — city names here are frequently Cyrillic. See decisions.md. */
+            slug: string;
+            country_code: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            /** @description Optional. Each id must resolve to an existing, non-blocked, non-deleted user with role=manager. The creating admin is always attached in addition to these. */
+            manager_ids?: string[];
+        };
+        /** @description A nil/omitted field leaves the corresponding column unchanged. */
+        UpdateCityRequest: {
+            name?: string;
+            country_code?: string;
+            /** Format: double */
+            lat?: number;
+            /** Format: double */
+            lon?: number;
+        };
+        AddManagerRequest: {
+            /** Format: uuid */
+            user_id: string;
+        };
     };
     responses: {
         /** @description Request body is not valid JSON, or contains an unknown field. */
@@ -539,10 +761,32 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description No city exists with this id. */
+        CityNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description A non-deleted city already uses this slug. */
+        SlugTaken: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
     };
     parameters: {
         /** @description UUIDv7 of the target user. */
         UserIdPath: string;
+        /** @description UUIDv7 of the target city. */
+        CityIdPath: string;
+        /** @description UUIDv7 of the manager being detached. */
+        ManagerUserIdPath: string;
     };
     requestBodies: never;
     headers: never;
@@ -832,6 +1076,35 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    searchManagerCandidatesAdmin: {
+        parameters: {
+            query: {
+                role: components["schemas"]["Role"];
+                /** @description Case-insensitive substring match on email or display_name. */
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of matching users. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserListEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
     getUserAdmin: {
         parameters: {
             query?: never;
@@ -1015,6 +1288,224 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["UserNotFound"];
+        };
+    };
+    listCitiesPublic: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of non-deleted cities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityListEnvelope"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listCitiesAdmin: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of non-deleted cities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCityListEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createCityAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCityRequest"];
+            };
+        };
+        responses: {
+            /** @description City created. */
+            201: {
+                headers: {
+                    /** @description /v1/admin/cities/{id} of the new city. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCityEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SlugTaken"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getCityAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target city. */
+                id: components["parameters"]["CityIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The city, with its manager list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCityEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CityNotFound"];
+        };
+    };
+    deleteCityAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target city. */
+                id: components["parameters"]["CityIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description City soft-deleted (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CityNotFound"];
+        };
+    };
+    updateCityAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target city. */
+                id: components["parameters"]["CityIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCityRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated city. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCityEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CityNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    addCityManagerAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target city. */
+                id: components["parameters"]["CityIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddManagerRequest"];
+            };
+        };
+        responses: {
+            /** @description The city, with the updated manager list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCityEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CityNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    removeCityManagerAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target city. */
+                id: components["parameters"]["CityIdPath"];
+                /** @description UUIDv7 of the manager being detached. */
+                userId: components["parameters"]["ManagerUserIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Manager detached (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CityNotFound"];
         };
     };
 }

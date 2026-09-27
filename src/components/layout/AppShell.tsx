@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../auth/useAuth";
+import { useIsAdmin } from "../../auth/useIsAdmin";
 import { logout } from "../../features/auth/logout";
 import { navItems } from "./navConfig";
 
@@ -21,6 +22,7 @@ const DRAWER_WIDTH = 220;
 
 export function AppShell() {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,7 +59,7 @@ export function AppShell() {
       >
         <Toolbar />
         <List>
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.adminOnly || isAdmin).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
             return (
