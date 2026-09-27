@@ -1,10 +1,11 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Paper } from "@mui/material";
 import { DataGrid, type GridPaginationModel } from "@mui/x-data-grid";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import type { AdminCityListItem } from "./api";
 import { buildCityColumns } from "./columns";
 import { useCitiesList, useDeleteCity } from "./queries";
@@ -24,16 +25,19 @@ export function CitiesListPage() {
 
   return (
     <Box>
-      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Cities</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/cities/new")}>
-          Add city
-        </Button>
-      </Stack>
+      <PageHeader
+        title="Cities"
+        subtitle="Manage the cities shown in the public listing and their managers."
+        actions={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/cities/new")}>
+            Add city
+          </Button>
+        }
+      />
 
       <ErrorAlert error={error ?? deleteCity.error} />
 
-      <Box sx={{ bgcolor: "background.paper" }}>
+      <Paper sx={{ overflow: "hidden" }}>
         <DataGrid
           columns={columns}
           rows={data?.items ?? []}
@@ -48,7 +52,7 @@ export function CitiesListPage() {
           onRowClick={(params) => navigate(`/cities/${params.id}`)}
           sx={{ cursor: "pointer" }}
         />
-      </Box>
+      </Paper>
 
       <ConfirmDialog
         open={Boolean(cityToDelete)}

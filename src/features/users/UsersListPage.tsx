@@ -1,8 +1,9 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Paper } from "@mui/material";
 import { DataGrid, type GridPaginationModel } from "@mui/x-data-grid";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { userColumns } from "./columns";
 import { useUsersList } from "./queries";
 
@@ -17,11 +18,9 @@ export function UsersListPage() {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Users
-      </Typography>
+      <PageHeader title="Users" subtitle="Search, review and moderate registered accounts." />
       <ErrorAlert error={error} />
-      <Box sx={{ bgcolor: "background.paper" }}>
+      <Paper sx={{ overflow: "hidden" }}>
         <DataGrid
           columns={userColumns}
           rows={data?.items ?? []}
@@ -36,7 +35,7 @@ export function UsersListPage() {
           onRowClick={(params) => navigate(`/users/${params.id}`)}
           sx={{ cursor: "pointer" }}
         />
-      </Box>
+      </Paper>
     </Box>
   );
 }

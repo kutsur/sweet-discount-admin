@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router";
 import { ApiError } from "../../api/envelope";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { formatDate } from "../../lib/formatDate";
 import type { AdminUser } from "../users/api";
 import type { CityManager } from "./api";
@@ -105,9 +106,7 @@ export function CityDetailPage() {
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        {city.name}
-      </Typography>
+      <PageHeader title={city.name} subtitle={`${city.country_code} · ${city.slug}`} />
 
       {isDeleted && (
         <Alert severity="warning" sx={{ mb: 3 }}>

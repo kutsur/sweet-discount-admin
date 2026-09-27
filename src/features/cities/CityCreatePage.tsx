@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { ApiError } from "../../api/envelope";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import type { AdminUser } from "../users/api";
 import { cityFormSchema, type CityFormValues } from "./citySchema";
 import { extractDetailMessage, matchFormField } from "./errorMapping";
@@ -66,9 +67,7 @@ export function CityCreatePage() {
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Add city
-      </Typography>
+      <PageHeader title="Add city" subtitle="Create a new city listing and assign its managers." />
 
       <ErrorAlert error={generalError} />
 
