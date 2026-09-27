@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../../auth/useAuth";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { formatDate } from "../../lib/formatDate";
 import type { Role } from "./api";
 import {
@@ -66,9 +67,7 @@ export function UserDetailPage() {
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        {user.display_name}
-      </Typography>
+      <PageHeader title={user.display_name} subtitle={user.email} />
 
       <ErrorAlert error={actionError} />
 
