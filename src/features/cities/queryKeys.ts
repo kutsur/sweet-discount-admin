@@ -7,4 +7,5 @@ export const citiesKeys = {
   details: () => [...citiesKeys.all, "detail"] as const,
   detail: (id: string) => [...citiesKeys.details(), id] as const,
   managerSearch: (q: string) => [...citiesKeys.all, "managerSearch", q] as const,
+  publicList: () => [...citiesKeys.all, "public"] as const,
 };

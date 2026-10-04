@@ -1,5 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import {
   Alert,
   Box,
@@ -106,7 +108,25 @@ export function CityDetailPage() {
 
   return (
     <Box sx={{ maxWidth: 640 }}>
-      <PageHeader title={city.name} subtitle={`${city.country_code} · ${city.slug}`} />
+      <PageHeader
+        title={city.name}
+        subtitle={`${city.country_code} · ${city.slug}`}
+        actions={
+          <>
+            <Button startIcon={<StorefrontIcon />} onClick={() => navigate(`/places?city_id=${city.id}`)}>
+              Places
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              disabled={isDeleted}
+              onClick={() => navigate(`/places/new?city_id=${city.id}`)}
+            >
+              Add place
+            </Button>
+          </>
+        }
+      />
 
       {isDeleted && (
         <Alert severity="warning" sx={{ mb: 3 }}>

@@ -79,3 +79,12 @@ export function useRemoveCityManager(id: string) {
     },
   });
 }
+
+/** Backs the places city picker. Cities change rarely, so this stays fresh for the session. */
+export function usePublicCities() {
+  return useQuery({
+    queryKey: citiesKeys.publicList(),
+    queryFn: () => citiesApi.fetchPublicCities(),
+    staleTime: 5 * 60 * 1000,
+  });
+}

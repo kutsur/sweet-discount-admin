@@ -4,6 +4,7 @@ import type { components } from "../../api/schema.gen";
 import type { AdminUser } from "../users/api";
 
 export type AdminCity = components["schemas"]["AdminCity"];
+export type City = components["schemas"]["City"];
 export type AdminCityListItem = components["schemas"]["AdminCityListItem"];
 export type CityManager = components["schemas"]["CityManager"];
 export type CreateCityRequest = components["schemas"]["CreateCityRequest"];
@@ -58,4 +59,13 @@ export function searchManagerCandidates({ q, limit, offset }: SearchManagersPara
       params: { query: { role: "manager", q: q || undefined, limit, offset } },
     }),
   );
+}
+
+/**
+ * The public, non-paginated-in-practice city list. Used by the places feature's city
+ * picker, which managers also reach — they are not allowed on /admin/cities. 100 is the
+ * endpoint's max limit; a longer catalog would need a typeahead instead.
+ */
+export function fetchPublicCities() {
+  return unwrapPage<City>(api.GET("/cities", { params: { query: { limit: 100, offset: 0 } } }));
 }
