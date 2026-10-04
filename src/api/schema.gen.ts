@@ -410,6 +410,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the place-category catalog (cafe, bakery, ...)
+         * @description Public, no auth. The catalog is seeded and read-only — there is no endpoint to create, rename, or reorder a category. See decisions.md M1-04.
+         */
+        get: operations["listPlaceCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List places, scoped to the actor's cities
+         * @description role=admin sees every non-deleted place; role=manager sees only places whose city they manage. Categories and opening_hours are omitted from list items — see decisions.md M1-04 and patterns.md's list-vs-single-resource entry.
+         */
+        get: operations["listManagedPlaces"];
+        put?: never;
+        /**
+         * Create a place, always status=pending
+         * @description role=admin or role=manager. A manager may only create in a city they are attached to via city_managers — a manager of a different city gets 404 place_not_found, not 403: telling a manager "this exists, you just can't have it" would be an enumeration oracle. Every created place is status=pending regardless of who creates it; approve/reject are separate calls. See decisions.md M1-04.
+         */
+        post: operations["createManagedPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/places/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one place, including a soft-deleted or non-approved one
+         * @description Audit view, matching GetCityByID's convention — returns the place regardless of status or deleted_at, subject to the same city-scope check as every other /manage/places/* call.
+         */
+        get: operations["getManagedPlace"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a place
+         * @description Idempotent — deleting an already-deleted place is still 204.
+         */
+        delete: operations["deleteManagedPlace"];
+        options?: never;
+        head?: never;
+        /**
+         * Partially update a place
+         * @description A nil/omitted field leaves the corresponding value unchanged. category_ids and opening_hours, when present (even as an empty array), fully replace the existing set. There is no city_id field — a place cannot change city, see decisions.md M1-04 #9; sending one is rejected as an unknown field (400 malformed_body).
+         */
+        patch: operations["updateManagedPlace"];
+        trace?: never;
+    };
+    "/manage/places/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a place
+         * @description Idempotent and unconditional — any status may transition to approved, and repeating the call re-stamps reviewed_by/reviewed_at rather than erroring. See decisions.md M1-04 #7.
+         */
+        post: operations["approveManagedPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/places/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a place with a required reason
+         * @description Idempotent and unconditional, same as approve.
+         */
+        post: operations["rejectManagedPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -705,6 +817,124 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
+        /** @description One entry in the seeded, read-only place-category catalog. */
+        PlaceCategory: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            sort_order: number;
+        };
+        PlaceCategoryListEnvelope: {
+            data: components["schemas"]["PlaceCategory"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        /**
+         * @description text + CHECK in the database, not a Postgres enum. See decisions.md M1-04
+         * @enum {string}
+         */
+        PlaceStatus: "pending" | "approved" | "rejected";
+        /** @description One weekday's opening interval. weekday is 1..7, 1=Monday, matching EXTRACT(ISODOW FROM ...) — see decisions.md M1-04 #16. opens_at/closes_at are venue-local wall-clock times, "HH:MM" through "24:00" inclusive — not UTC instants, see decisions.md M1-04 #14. No row for a weekday means closed that day; closes_at < opens_at means closing after midnight; opens_at="00:00" with closes_at="24:00" means open the full 24 hours, see decisions.md M1-04 #15. */
+        OpeningHours: {
+            weekday: number;
+            opens_at: string;
+            closes_at: string;
+        };
+        /** @description The staff single-resource shape — create, get, update, approve, and reject all return this, with categories and opening_hours populated. See patterns.md's list-vs-single-resource entry. */
+        ManagedPlace: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            city_id: string;
+            name: string;
+            address: string | null;
+            phone: string | null;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            status: components["schemas"]["PlaceStatus"];
+            rejection_reason: string | null;
+            /** Format: uuid */
+            created_by: string;
+            /** Format: uuid */
+            reviewed_by: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            categories: components["schemas"]["PlaceCategory"][];
+            opening_hours: components["schemas"]["OpeningHours"][];
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ManagedPlaceEnvelope: {
+            data: components["schemas"]["ManagedPlace"];
+            meta: Record<string, never>;
+        };
+        /** @description The staff list shape — same columns as ManagedPlace, minus categories and opening_hours. See patterns.md's list-vs-single-resource entry. */
+        ManagedPlaceListItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            city_id: string;
+            name: string;
+            address: string | null;
+            phone: string | null;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            status: components["schemas"]["PlaceStatus"];
+            rejection_reason: string | null;
+            /** Format: uuid */
+            created_by: string;
+            /** Format: uuid */
+            reviewed_by: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ManagedPlaceListEnvelope: {
+            data: components["schemas"]["ManagedPlaceListItem"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        CreatePlaceRequest: {
+            /** Format: uuid */
+            city_id: string;
+            name: string;
+            address?: string | null;
+            /** @description E.164 international format (e.g. "+375291234567"). Normalized server-side (spaces, hyphens, parens stripped) before validation. */
+            phone?: string | null;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            category_ids?: string[];
+            opening_hours?: components["schemas"]["OpeningHours"][];
+        };
+        /** @description A nil/omitted field leaves the corresponding value unchanged. category_ids and opening_hours, when present (even as an empty array), fully replace the existing set. No city_id field — see decisions.md M1-04 #9. */
+        UpdatePlaceRequest: {
+            name?: string;
+            address?: string | null;
+            phone?: string | null;
+            /** Format: double */
+            lat?: number;
+            /** Format: double */
+            lon?: number;
+            category_ids?: string[];
+            opening_hours?: components["schemas"]["OpeningHours"][];
+        };
+        RejectPlaceRequest: {
+            reason: string;
+        };
     };
     responses: {
         /** @description Request body is not valid JSON, or contains an unknown field. */
@@ -779,6 +1009,15 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description No place exists with this id — or it does, but the actor is a manager not attached to its city. The two cases are deliberately indistinguishable; see decisions.md M1-04 #11. */
+        PlaceNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
     };
     parameters: {
         /** @description UUIDv7 of the target user. */
@@ -787,6 +1026,8 @@ export interface components {
         CityIdPath: string;
         /** @description UUIDv7 of the manager being detached. */
         ManagerUserIdPath: string;
+        /** @description UUIDv7 of the target place. */
+        PlaceIdPath: string;
     };
     requestBodies: never;
     headers: never;
@@ -1506,6 +1747,227 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["CityNotFound"];
+        };
+    };
+    listPlaceCategories: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of categories, ordered by sort_order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceCategoryListEnvelope"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listManagedPlaces: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                city_id?: string;
+                status?: components["schemas"]["PlaceStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of places this actor may manage. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceListEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Place created, status=pending. */
+            201: {
+                headers: {
+                    /** @description /v1/manage/places/{id} of the new place. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+        };
+    };
+    deleteManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Place deleted (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+        };
+    };
+    updateManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    approveManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The approved place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+        };
+    };
+    rejectManagedPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The rejected place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
 }
