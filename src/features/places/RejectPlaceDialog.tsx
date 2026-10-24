@@ -27,31 +27,31 @@ export function RejectPlaceDialog({ open, loading, onCancel, onConfirm }: Reject
 
   return (
     <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
-      <DialogTitle>Reject this place?</DialogTitle>
+      <DialogTitle>Отклонить заведение?</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          The reason is stored on the place and shown to whoever submitted it.
+          Причина сохранится в карточке заведения и будет видна тому, кто его добавил.
         </DialogContentText>
         <TextField
           autoFocus
           fullWidth
           multiline
           minRows={2}
-          label="Reason"
+          label="Причина"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={close} disabled={loading}>
-          Cancel
+          Отмена
         </Button>
         <Button
           color="error"
           disabled={loading || reason.trim().length === 0}
           onClick={() => onConfirm(reason.trim())}
         >
-          Reject
+          Отклонить
         </Button>
       </DialogActions>
     </Dialog>

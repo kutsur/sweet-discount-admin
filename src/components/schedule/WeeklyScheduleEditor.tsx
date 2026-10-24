@@ -12,28 +12,41 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { DaySchedule, WeekSchedule } from "./openingHours";
-import { WEEKDAYS } from "./openingHours";
+import type { DaySchedule, Interval, WeekSchedule } from "../../lib/weeklySchedule";
+import { WEEKDAYS } from "../../lib/weeklySchedule";
 
-interface OpeningHoursEditorProps {
+interface WeeklyScheduleEditorProps {
   value: WeekSchedule;
   onChange: (next: WeekSchedule) => void;
+  /** Heading above the grid, e.g. "Opening hours". Omit when the caller renders its own. */
+  title?: string;
+  /** What a switched-off day means here, e.g. "Closed" or "Not available". */
+  offLabel?: string;
+  hint?: string;
   disabled?: boolean;
   error?: string | null;
 }
 
 /**
- * One row per weekday. A day switched off sends no rows at all, which is exactly how
- * the backend encodes "closed that day". A day may hold several intervals (e.g. a
- * lunch break) — the API keys rows by (weekday, opens_at), so repeats are legal as
- * long as they start at different times.
+ * One row per weekday. A day switched off sends no windows at all. A day may hold
+ * several intervals (e.g. a lunch break) — the API keys rows by (weekday, start), so
+ * repeats are legal as long as they start at different times. Shared by a place's
+ * opening hours and a discount's schedule.
  */
-export function OpeningHoursEditor({ value, onChange, disabled, error }: OpeningHoursEditorProps) {
+export function WeeklyScheduleEditor({
+  value,
+  onChange,
+  title,
+  offLabel = "Выключено",
+  hint = "Местное время заведения. Если конец раньше начала, интервал переходит через полночь.",
+  disabled,
+  error,
+}: WeeklyScheduleEditorProps) {
   const patchDay = (weekday: number, patch: Partial<DaySchedule>) => {
     onChange({ ...value, [weekday]: { ...value[weekday], ...patch } });
   };
 
-  const patchInterval = (weekday: number, index: number, field: "opens_at" | "closes_at", next: string) => {
+  const patchInterval = (weekday: number, index: number, field: keyof Interval, next: string) => {
     const intervals = value[weekday].intervals.map((interval, i) =>
       i === index ? { ...interval, [field]: next } : interval,
     );
@@ -41,7 +54,7 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
   };
 
   const addInterval = (weekday: number) => {
-    patchDay(weekday, { intervals: [...value[weekday].intervals, { opens_at: "", closes_at: "" }] });
+    patchDay(weekday, { intervals: [...value[weekday].intervals, { start: "", end: "" }] });
   };
 
   const removeInterval = (weekday: number, index: number) => {
@@ -53,7 +66,7 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
     const next: WeekSchedule = { ...value };
     for (const day of WEEKDAYS) {
       next[day.value] = {
-        open: monday.open,
+        enabled: monday.enabled,
         allDay: monday.allDay,
         intervals: monday.intervals.map((interval) => ({ ...interval })),
       };
@@ -64,9 +77,9 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
   return (
     <Box>
       <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="subtitle2">Opening hours</Typography>
+        <Typography variant="subtitle2">{title}</Typography>
         <Button size="small" onClick={applyMondayToAll} disabled={disabled}>
-          Copy Monday to all days
+          Скопировать понедельник на все дни
         </Button>
       </Stack>
 
@@ -86,46 +99,46 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
                 control={
                   <Switch
                     size="small"
-                    checked={entry.open}
+                    checked={entry.enabled}
                     disabled={disabled}
-                    onChange={(event) => patchDay(day.value, { open: event.target.checked })}
+                    onChange={(event) => patchDay(day.value, { enabled: event.target.checked })}
                   />
                 }
                 label={day.label}
               />
 
-              {!entry.open && (
+              {!entry.enabled && (
                 <Typography variant="body2" color="text.secondary" sx={{ pt: 1.25 }}>
-                  Closed
+                  {offLabel}
                 </Typography>
               )}
 
-              {entry.open && !entry.allDay && (
+              {entry.enabled && !entry.allDay && (
                 <Stack spacing={1}>
                   {entry.intervals.map((interval, index) => (
                     <Stack key={index} direction="row" spacing={1} sx={{ alignItems: "center" }}>
                       <TextField
                         type="time"
                         size="small"
-                        label="From"
+                        label="С"
                         disabled={disabled}
-                        value={interval.opens_at}
-                        onChange={(event) => patchInterval(day.value, index, "opens_at", event.target.value)}
+                        value={interval.start}
+                        onChange={(event) => patchInterval(day.value, index, "start", event.target.value)}
                         slotProps={{ inputLabel: { shrink: true }, htmlInput: { step: 300 } }}
                         sx={{ width: 130 }}
                       />
                       <TextField
                         type="time"
                         size="small"
-                        label="To"
+                        label="До"
                         disabled={disabled}
-                        value={interval.closes_at}
-                        onChange={(event) => patchInterval(day.value, index, "closes_at", event.target.value)}
+                        value={interval.end}
+                        onChange={(event) => patchInterval(day.value, index, "end", event.target.value)}
                         slotProps={{ inputLabel: { shrink: true }, htmlInput: { step: 300 } }}
                         sx={{ width: 130 }}
                       />
                       {index === entry.intervals.length - 1 ? (
-                        <Tooltip title="Add another interval (e.g. after a break)">
+                        <Tooltip title="Добавить интервал (например, после перерыва)">
                           <span>
                             <IconButton
                               size="small"
@@ -153,7 +166,7 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
                 </Stack>
               )}
 
-              {entry.open && (
+              {entry.enabled && (
                 <FormControlLabel
                   sx={{ ml: 0 }}
                   control={
@@ -164,7 +177,7 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
                       onChange={(event) => patchDay(day.value, { allDay: event.target.checked })}
                     />
                   }
-                  label="24 hours"
+                  label="Круглосуточно"
                 />
               )}
             </Stack>
@@ -172,9 +185,11 @@ export function OpeningHoursEditor({ value, onChange, disabled, error }: Opening
         })}
       </Stack>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-        Venue-local times. A closing time earlier than the opening time means the place closes after midnight.
-      </Typography>
+      {hint && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          {hint}
+        </Typography>
+      )}
 
       {error && (
         <Typography variant="body2" color="error" sx={{ mt: 1 }}>

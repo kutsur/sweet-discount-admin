@@ -1,10 +1,12 @@
 import { Box, CircularProgress } from "@mui/material";
 import { Outlet } from "react-router";
 import { ForbiddenPage } from "../components/feedback/ForbiddenPage";
-import { useIsAdmin } from "./useIsAdmin";
+import { hasRole, type Role } from "./roles";
+import { useMe } from "./useMe";
 
-export function RequireAdmin() {
-  const { isAdmin, isLoading } = useIsAdmin();
+/** Route guard: renders the nested routes only for the given roles. A UX boundary, not a security one. */
+export function RequireRole({ roles }: { roles: readonly Role[] }) {
+  const { role, isLoading } = useMe();
 
   if (isLoading) {
     return (
@@ -14,7 +16,7 @@ export function RequireAdmin() {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasRole(role, roles)) {
     return <ForbiddenPage />;
   }
 

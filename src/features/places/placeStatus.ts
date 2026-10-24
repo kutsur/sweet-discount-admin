@@ -2,9 +2,9 @@ import type { ChipProps } from "@mui/material";
 import type { PlaceStatus } from "./api";
 
 export const PLACE_STATUS_LABEL: Record<PlaceStatus, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
+  pending: "На модерации",
+  approved: "Одобрено",
+  rejected: "Отклонено",
 };
 
 export const PLACE_STATUS_COLOR: Record<PlaceStatus, ChipProps["color"]> = {

@@ -6,14 +6,14 @@ import type { AdminCityListItem } from "./api";
 // Sort/filter are off on every column: the API only supports limit/offset, no sort or search
 // param — see the users columns.tsx for the same reasoning.
 const baseCityColumns: GridColDef<AdminCityListItem>[] = [
-  { field: "name", headerName: "Name", flex: 1, minWidth: 160, sortable: false, filterable: false },
-  { field: "slug", headerName: "Slug", flex: 1, minWidth: 140, sortable: false, filterable: false },
-  { field: "country_code", headerName: "Country", width: 100, sortable: false, filterable: false },
-  { field: "lat", headerName: "Lat", width: 110, sortable: false, filterable: false },
-  { field: "lon", headerName: "Lon", width: 110, sortable: false, filterable: false },
+  { field: "name", headerName: "Название", flex: 1, minWidth: 160, sortable: false, filterable: false },
+  { field: "slug", headerName: "Короткое имя", flex: 1, minWidth: 140, sortable: false, filterable: false },
+  { field: "country_code", headerName: "Страна", width: 100, sortable: false, filterable: false },
+  { field: "lat", headerName: "Широта", width: 110, sortable: false, filterable: false },
+  { field: "lon", headerName: "Долгота", width: 110, sortable: false, filterable: false },
   {
     field: "created_at",
-    headerName: "Created",
+    headerName: "Создан",
     width: 180,
     sortable: false,
     filterable: false,
@@ -35,7 +35,7 @@ export function buildCityColumns(
         <GridActionsCellItem
           key="delete"
           icon={<DeleteIcon />}
-          label="Delete"
+          label="Удалить"
           onClick={() => onDeleteRequest(params.row)}
         />,
       ],

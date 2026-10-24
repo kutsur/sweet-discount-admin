@@ -6,7 +6,7 @@ import type { AdminUser } from "../users/api";
 export type AdminCity = components["schemas"]["AdminCity"];
 export type City = components["schemas"]["City"];
 export type AdminCityListItem = components["schemas"]["AdminCityListItem"];
-export type CityManager = components["schemas"]["CityManager"];
+export type CityManager = components["schemas"]["Assignee"];
 export type CreateCityRequest = components["schemas"]["CreateCityRequest"];
 export type UpdateCityRequest = components["schemas"]["UpdateCityRequest"];
 
@@ -42,9 +42,7 @@ export function addCityManager(id: string, userId: string) {
 }
 
 export function removeCityManager(id: string, userId: string) {
-  return unwrapVoid(
-    api.DELETE("/admin/cities/{id}/managers/{userId}", { params: { path: { id, userId } } }),
-  );
+  return unwrapVoid(api.DELETE("/admin/cities/{id}/managers/{userId}", { params: { path: { id, userId } } }));
 }
 
 export interface SearchManagersParams {

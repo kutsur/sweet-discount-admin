@@ -1,3 +1,4 @@
+import { ROLE_LABEL } from "../../auth/roles";
 import { Chip } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 import { formatDate } from "../../lib/formatDate";
@@ -8,10 +9,10 @@ import { StatusChip } from "./StatusChip";
 // param. Data Grid Community's client-side sort/filter would silently only reorder the loaded
 // page, misrepresenting the full dataset. Flip these on once the backend adds server-side params.
 export const userColumns: GridColDef<AdminUser>[] = [
-  { field: "email", headerName: "Email", flex: 1.5, minWidth: 220, sortable: false, filterable: false },
+  { field: "email", headerName: "Эл. почта", flex: 1.5, minWidth: 220, sortable: false, filterable: false },
   {
     field: "display_name",
-    headerName: "Name",
+    headerName: "Имя",
     flex: 1,
     minWidth: 160,
     sortable: false,
@@ -19,15 +20,15 @@ export const userColumns: GridColDef<AdminUser>[] = [
   },
   {
     field: "role",
-    headerName: "Role",
+    headerName: "Роль",
     width: 130,
     sortable: false,
     filterable: false,
-    renderCell: (params) => <Chip size="small" variant="outlined" label={params.value} />,
+    renderCell: (params) => <Chip size="small" variant="outlined" label={ROLE_LABEL[params.row.role]} />,
   },
   {
     field: "status",
-    headerName: "Status",
+    headerName: "Статус",
     width: 130,
     sortable: false,
     filterable: false,
@@ -35,7 +36,7 @@ export const userColumns: GridColDef<AdminUser>[] = [
   },
   {
     field: "created_at",
-    headerName: "Created",
+    headerName: "Создан",
     width: 180,
     sortable: false,
     filterable: false,

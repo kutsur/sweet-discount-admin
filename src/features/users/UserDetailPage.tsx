@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
+import { ROLE_LABEL } from "../../auth/roles";
 import { useAuth } from "../../auth/useAuth";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
@@ -30,7 +31,9 @@ import {
 } from "./queries";
 import { StatusChip } from "./StatusChip";
 
-const ROLE_OPTIONS: Role[] = ["user", "moderator", "admin", "owner"];
+// Every role, manager included — the list used to leave it out, so a manager could
+// only be created through the database.
+const ROLE_OPTIONS = Object.keys(ROLE_LABEL) as Role[];
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +63,7 @@ export function UserDetailPage() {
   }
 
   if (loadError || !user) {
-    return <ErrorAlert error={loadError ?? new Error("User not found.")} />;
+    return <ErrorAlert error={loadError ?? new Error("Пользователь не найден.")} />;
   }
 
   const isSelf = viewer?.id === user.id;
@@ -73,33 +76,33 @@ export function UserDetailPage() {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Stack spacing={1.5}>
-          <Row label="Email" value={user.email} />
-          <Row label="Status" value={<StatusChip user={user} />} />
-          <Row label="Verified" value={formatDate(user.email_verified_at)} />
-          <Row label="Blocked" value={formatDate(user.blocked_at)} />
-          <Row label="Deleted" value={formatDate(user.deleted_at)} />
-          <Row label="Created" value={formatDate(user.created_at)} />
-          <Row label="Updated" value={formatDate(user.updated_at)} />
+          <Row label="Эл. почта" value={user.email} />
+          <Row label="Статус" value={<StatusChip user={user} />} />
+          <Row label="Почта подтверждена" value={formatDate(user.email_verified_at)} />
+          <Row label="Заблокирован" value={formatDate(user.blocked_at)} />
+          <Row label="Удалён" value={formatDate(user.deleted_at)} />
+          <Row label="Создан" value={formatDate(user.created_at)} />
+          <Row label="Изменён" value={formatDate(user.updated_at)} />
         </Stack>
       </Paper>
 
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
-          Actions
+          Действия
         </Typography>
         <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
           <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="role-label">Role</InputLabel>
+            <InputLabel id="role-label">Роль</InputLabel>
             <Select
               labelId="role-label"
-              label="Role"
+              label="Роль"
               value={user.role}
               disabled={changeRole.isPending}
               onChange={(event) => changeRole.mutate(event.target.value as Role)}
             >
               {ROLE_OPTIONS.map((role) => (
                 <MenuItem key={role} value={role}>
-                  {role}
+                  {ROLE_LABEL[role]}
                 </MenuItem>
               ))}
             </Select>
@@ -110,19 +113,19 @@ export function UserDetailPage() {
             disabled={Boolean(user.email_verified_at) || activate.isPending}
             onClick={() => activate.mutate()}
           >
-            Activate
+            Активировать
           </Button>
 
           <Button variant="outlined" disabled={triggerReset.isPending} onClick={() => triggerReset.mutate()}>
-            Send password reset
+            Отправить сброс пароля
           </Button>
 
           {user.blocked_at ? (
             <Button variant="outlined" disabled={unblock.isPending} onClick={() => unblock.mutate()}>
-              Unblock
+              Разблокировать
             </Button>
           ) : (
-            <Tooltip title={isSelf ? "You can't block your own account" : ""}>
+            <Tooltip title={isSelf ? "Нельзя заблокировать свою учётную запись" : ""}>
               <span>
                 <Button
                   variant="outlined"
@@ -130,13 +133,13 @@ export function UserDetailPage() {
                   disabled={isSelf || block.isPending}
                   onClick={() => setConfirmBlock(true)}
                 >
-                  Block
+                  Заблокировать
                 </Button>
               </span>
             </Tooltip>
           )}
 
-          <Tooltip title={isSelf ? "You can't delete your own account" : ""}>
+          <Tooltip title={isSelf ? "Нельзя удалить свою учётную запись" : ""}>
             <span>
               <Button
                 variant="outlined"
@@ -144,7 +147,7 @@ export function UserDetailPage() {
                 disabled={Boolean(user.deleted_at) || isSelf || del.isPending}
                 onClick={() => setConfirmDelete(true)}
               >
-                Delete
+                Удалить
               </Button>
             </span>
           </Tooltip>
@@ -153,9 +156,9 @@ export function UserDetailPage() {
 
       <ConfirmDialog
         open={confirmBlock}
-        title="Block this user?"
-        description={`${user.email} will be signed out everywhere and unable to log back in until unblocked.`}
-        confirmLabel="Block"
+        title="Заблокировать пользователя?"
+        description={`${user.email} будет разлогинен на всех устройствах и не сможет войти, пока его не разблокируют.`}
+        confirmLabel="Заблокировать"
         destructive
         loading={block.isPending}
         onCancel={() => setConfirmBlock(false)}
@@ -164,9 +167,9 @@ export function UserDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete this user?"
-        description={`${user.email} will be soft-deleted and anonymized. This cannot be undone from this screen.`}
-        confirmLabel="Delete"
+        title="Удалить пользователя?"
+        description={`${user.email} будет удалён и обезличен. Отменить это с этого экрана нельзя.`}
+        confirmLabel="Удалить"
         destructive
         loading={del.isPending}
         onCancel={() => setConfirmDelete(false)}

@@ -11,8 +11,8 @@ export function deriveUserStatus(user: AdminUser): UserStatus {
 }
 
 export const USER_STATUS_LABEL: Record<UserStatus, string> = {
-  active: "Active",
-  unverified: "Unverified",
-  blocked: "Blocked",
-  deleted: "Deleted",
+  active: "Активен",
+  unverified: "Не подтверждён",
+  blocked: "Заблокирован",
+  deleted: "Удалён",
 };

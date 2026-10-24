@@ -9,7 +9,7 @@ interface PlaceStatusChipProps {
 
 export function PlaceStatusChip({ status, deletedAt }: PlaceStatusChipProps) {
   if (deletedAt) {
-    return <Chip size="small" label="Deleted" />;
+    return <Chip size="small" label="Удалено" />;
   }
   return <Chip size="small" label={PLACE_STATUS_LABEL[status]} color={PLACE_STATUS_COLOR[status]} />;
 }

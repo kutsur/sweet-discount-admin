@@ -61,7 +61,7 @@ export function ConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel} disabled={loading}>
-          Cancel
+          Отмена
         </Button>
         <Button onClick={onConfirm} color={destructive ? "error" : "primary"} disabled={loading} autoFocus>
           {confirmLabel}

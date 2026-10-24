@@ -1,5 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import { GridActionsCellItem, type GridColDef } from "@mui/x-data-grid";
+import { imageColumn } from "../../components/images/imageColumn";
 import { formatDate } from "../../lib/formatDate";
 import type { ManagedPlaceListItem } from "./api";
 import { PlaceStatusChip } from "./PlaceStatusChip";
@@ -7,7 +8,8 @@ import { PlaceStatusChip } from "./PlaceStatusChip";
 interface BuildPlaceColumnsOptions {
   /** List rows carry city_id only; the picker's city list supplies the display name. */
   cityNameById: Map<string, string>;
-  onDeleteRequest: (place: ManagedPlaceListItem) => void;
+  /** Omitted for roles that may not delete places — the actions column is then left out. */
+  onDeleteRequest?: (place: ManagedPlaceListItem) => void;
 }
 
 // Sort/filter are off on every column: the API takes limit/offset/city_id/status only,
@@ -16,11 +18,12 @@ export function buildPlaceColumns({
   cityNameById,
   onDeleteRequest,
 }: BuildPlaceColumnsOptions): GridColDef<ManagedPlaceListItem>[] {
-  return [
-    { field: "name", headerName: "Name", flex: 1, minWidth: 180, sortable: false, filterable: false },
+  const columns: GridColDef<ManagedPlaceListItem>[] = [
+    imageColumn<ManagedPlaceListItem>(),
+    { field: "name", headerName: "Название", flex: 1, minWidth: 180, sortable: false, filterable: false },
     {
       field: "city_id",
-      headerName: "City",
+      headerName: "Город",
       width: 140,
       sortable: false,
       filterable: false,
@@ -28,7 +31,7 @@ export function buildPlaceColumns({
     },
     {
       field: "status",
-      headerName: "Status",
+      headerName: "Статус",
       width: 120,
       sortable: false,
       filterable: false,
@@ -38,7 +41,7 @@ export function buildPlaceColumns({
     },
     {
       field: "address",
-      headerName: "Address",
+      headerName: "Адрес",
       flex: 1,
       minWidth: 180,
       sortable: false,
@@ -47,7 +50,7 @@ export function buildPlaceColumns({
     },
     {
       field: "phone",
-      headerName: "Phone",
+      headerName: "Телефон",
       width: 150,
       sortable: false,
       filterable: false,
@@ -55,12 +58,18 @@ export function buildPlaceColumns({
     },
     {
       field: "created_at",
-      headerName: "Created",
+      headerName: "Создано",
       width: 180,
       sortable: false,
       filterable: false,
       valueFormatter: (value: string) => formatDate(value),
     },
+  ];
+
+  if (!onDeleteRequest) return columns;
+
+  return [
+    ...columns,
     {
       field: "actions",
       type: "actions",
@@ -70,7 +79,7 @@ export function buildPlaceColumns({
         <GridActionsCellItem
           key="delete"
           icon={<DeleteIcon />}
-          label="Delete"
+          label="Удалить"
           disabled={Boolean(params.row.deleted_at)}
           onClick={() => onDeleteRequest(params.row)}
         />,

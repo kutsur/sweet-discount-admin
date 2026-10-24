@@ -152,6 +152,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in user's own profile, including role
+         * @description Any authenticated role. The admin panel reads role from here to decide which sections to show; every route still enforces its own role check server-side.
+         */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -439,7 +459,7 @@ export interface paths {
         };
         /**
          * List places, scoped to the actor's cities
-         * @description role=admin sees every non-deleted place; role=manager sees only places whose city they manage. Categories and opening_hours are omitted from list items — see decisions.md M1-04 and patterns.md's list-vs-single-resource entry.
+         * @description role=admin sees every non-deleted place; role=manager sees only places whose city they manage; role=owner only the places attached to them via place_owners. Categories and opening_hours are omitted from list items — see decisions.md M1-04 and patterns.md's list-vs-single-resource entry.
          */
         get: operations["listManagedPlaces"];
         put?: never;
@@ -463,7 +483,7 @@ export interface paths {
         };
         /**
          * Get one place, including a soft-deleted or non-approved one
-         * @description Audit view, matching GetCityByID's convention — returns the place regardless of status or deleted_at, subject to the same city-scope check as every other /manage/places/* call.
+         * @description Audit view, matching GetCityByID's convention — returns the place regardless of status or deleted_at, subject to the same city-scope check as every other /manage/places/* call. role=owner may read (only) the places they own; every mutating /manage/places/* call is admin/manager-only and answers an owner with 403.
          */
         get: operations["getManagedPlace"];
         put?: never;
@@ -520,6 +540,135 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/manage/places/{id}/owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach an owner to a place
+         * @description role=admin, or role=manager of the place's city. Idempotent. user_id must resolve to an existing, non-blocked, non-deleted user with role=owner. An owner manages the place's discounts and may read the place; they never edit or moderate it. See decisions.md M1-06 #1.
+         */
+        post: operations["addManagedPlaceOwner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/places/{id}/owners/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Detach an owner from a place
+         * @description Idempotent — removing a user who was never attached is still 204.
+         */
+        delete: operations["removeManagedPlaceOwner"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/owner-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Typeahead of active role=owner accounts
+         * @description role=admin or role=manager. Matches q against email or display name; blocked and deleted accounts are excluded.
+         */
+        get: operations["searchOwnerCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload an image for a place or a discount
+         * @description role=admin, role=manager or role=owner. Two steps: upload here, then send the returned id as image_id when creating or updating a place or a discount. The file is validated (JPEG or PNG, at most 2000×2000 px — checked before decoding), stripped of metadata such as EXIF, downscaled to at most 1600 px and re-encoded as JPEG. See decisions.md M1-07.
+         */
+        post: operations["uploadImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/discounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List discounts, scoped to the actor's places
+         * @description role=admin sees every discount; role=manager those of places in their cities; role=owner those of the places they own. Soft-deleted discounts, and discounts of soft-deleted places, are excluded. Newest first.
+         */
+        get: operations["listManagedDiscounts"];
+        put?: never;
+        /**
+         * Create a discount for a place
+         * @description role=admin, role=manager of the place's city, or role=owner of the place. An actor who may not operate the place gets 404 place_not_found (see decisions.md M1-04 #11). status defaults to active. kind decides which kind-specific fields are required — percent_off for kind=percent_off. See decisions.md M1-06.
+         */
+        post: operations["createManagedDiscount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/manage/discounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one discount, including a soft-deleted one */
+        get: operations["getManagedDiscount"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a discount
+         * @description Idempotent — deleting an already-deleted discount is still 204.
+         */
+        delete: operations["deleteManagedDiscount"];
+        options?: never;
+        head?: never;
+        /**
+         * Partially update a discount
+         * @description An omitted field is left unchanged; an explicit null clears a nullable field (description, percent_off, starts_on, ends_on) — see decisions.md M1-06 #5. schedule, when present, fully replaces the windows ([] or null means all day, every day). place_id and kind are immutable. The merged result is validated as a whole.
+         */
+        patch: operations["updateManagedDiscount"];
         trace?: never;
     };
 }
@@ -586,6 +735,19 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+        };
+        Me: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            display_name: string;
+            email_verified: boolean;
+            role: components["schemas"]["Role"];
+        };
+        MeEnvelope: {
+            data: components["schemas"]["Me"];
+            meta: Record<string, never>;
         };
         User: {
             /** Format: uuid */
@@ -737,8 +899,8 @@ export interface components {
             data: components["schemas"]["City"][];
             meta: components["schemas"]["PaginationMeta"];
         };
-        /** @description A denormalized city_managers row, joined with the user it points at. */
-        CityManager: {
+        /** @description A user attached to a resource — a city's manager (city_managers) or a place's owner (place_owners) — joined with the user row it points at. */
+        Assignee: {
             /** Format: uuid */
             user_id: string;
             /** Format: email */
@@ -758,7 +920,7 @@ export interface components {
             lat: number;
             /** Format: double */
             lon: number;
-            managers: components["schemas"]["CityManager"][];
+            managers: components["schemas"]["Assignee"][];
             /** Format: date-time */
             deleted_at: string | null;
             /** Format: date-time */
@@ -840,7 +1002,7 @@ export interface components {
             opens_at: string;
             closes_at: string;
         };
-        /** @description The staff single-resource shape — create, get, update, approve, and reject all return this, with categories and opening_hours populated. See patterns.md's list-vs-single-resource entry. */
+        /** @description The staff single-resource shape — create, get, update, approve, reject, and the owner endpoints all return this, with categories, opening_hours and owners populated. See patterns.md's list-vs-single-resource entry. */
         ManagedPlace: {
             /** Format: uuid */
             id: string;
@@ -863,6 +1025,9 @@ export interface components {
             reviewed_at: string | null;
             categories: components["schemas"]["PlaceCategory"][];
             opening_hours: components["schemas"]["OpeningHours"][];
+            owners: components["schemas"]["Assignee"][];
+            /** @description The picture, or null. Set it through image_id on create/update. */
+            image: components["schemas"]["Image"] | null;
             /** Format: date-time */
             deleted_at: string | null;
             /** Format: date-time */
@@ -895,6 +1060,8 @@ export interface components {
             reviewed_by: string | null;
             /** Format: date-time */
             reviewed_at: string | null;
+            /** @description The picture, or null. Set it through image_id on create/update. */
+            image: components["schemas"]["Image"] | null;
             /** Format: date-time */
             deleted_at: string | null;
             /** Format: date-time */
@@ -919,8 +1086,13 @@ export interface components {
             lon: number;
             category_ids?: string[];
             opening_hours?: components["schemas"]["OpeningHours"][];
+            /**
+             * Format: uuid
+             * @description An image from POST /manage/images. Only an image the caller uploaded (any image, for an admin) — otherwise 422.
+             */
+            image_id?: string | null;
         };
-        /** @description A nil/omitted field leaves the corresponding value unchanged. category_ids and opening_hours, when present (even as an empty array), fully replace the existing set. No city_id field — see decisions.md M1-04 #9. */
+        /** @description An omitted field leaves the corresponding value unchanged; null clears a nullable one (address, phone, image_id). category_ids and opening_hours, when present (even as an empty array), fully replace the existing set. No city_id field — see decisions.md M1-04 #9. */
         UpdatePlaceRequest: {
             name?: string;
             address?: string | null;
@@ -931,9 +1103,145 @@ export interface components {
             lon?: number;
             category_ids?: string[];
             opening_hours?: components["schemas"]["OpeningHours"][];
+            /**
+             * Format: uuid
+             * @description An image from POST /manage/images, or null to remove the picture. Only an image the caller uploaded (any image, for an admin), unless it is the current one — otherwise 422.
+             */
+            image_id?: string | null;
         };
         RejectPlaceRequest: {
             reason: string;
+        };
+        /** @description A typeahead row — just enough to pick a person. */
+        AssignableUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            display_name: string;
+        };
+        AssignableUserListEnvelope: {
+            data: components["schemas"]["AssignableUser"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        /**
+         * @description Which kind-specific terms a discount carries. text + CHECK in the database, extended additively (e.g. a future surprise_box) — see decisions.md M1-06 #3.
+         * @enum {string}
+         */
+        DiscountKind: "percent_off";
+        /**
+         * @description active is offered (within its dates and schedule); paused is switched off by the venue.
+         * @enum {string}
+         */
+        DiscountStatus: "active" | "paused";
+        /** @description One weekday window the discount applies in. weekday is 1..7, 1=Monday. Venue-local "HH:MM" times through "24:00"; ends_at < starts_at runs past midnight; starts_at="00:00" with ends_at="24:00" is the whole day. Same rules as OpeningHours. */
+        ScheduleWindow: {
+            weekday: number;
+            starts_at: string;
+            ends_at: string;
+        };
+        /** @description An uploaded picture, re-encoded server-side as a JPEG with the longest edge at most 1600 px. url is absolute (api-contract.md rule 4) — use it as-is. */
+        Image: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uri */
+            url: string;
+            width: number;
+            height: number;
+        };
+        ImageEnvelope: {
+            data: components["schemas"]["Image"];
+            meta: Record<string, never>;
+        };
+        UploadImageRequest: {
+            /**
+             * Format: binary
+             * @description A JPEG or PNG, at most 2000×2000 px and 5 MB.
+             */
+            file: string;
+        };
+        /** @description Both the single-resource and the list-item shape — the schedule is small and bounded, so lists keep it. place_name and city_id are denormalized from the place. */
+        Discount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            place_id: string;
+            place_name: string;
+            /** @description The picture, or null. Set it through image_id on create/update. */
+            image: components["schemas"]["Image"] | null;
+            /** Format: uuid */
+            city_id: string;
+            kind: components["schemas"]["DiscountKind"];
+            title: string;
+            description: string | null;
+            /** @description Set for kind=percent_off, null otherwise. */
+            percent_off: number | null;
+            status: components["schemas"]["DiscountStatus"];
+            /**
+             * Format: date
+             * @description First day the discount is valid (inclusive); null means no start bound.
+             */
+            starts_on: string | null;
+            /**
+             * Format: date
+             * @description Last day the discount is valid (inclusive); null means open-ended.
+             */
+            ends_on: string | null;
+            /** @description Empty means all day, every day. */
+            schedule: components["schemas"]["ScheduleWindow"][];
+            /** Format: uuid */
+            created_by: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            deleted_at: string | null;
+        };
+        DiscountEnvelope: {
+            data: components["schemas"]["Discount"];
+            meta: Record<string, never>;
+        };
+        DiscountListEnvelope: {
+            data: components["schemas"]["Discount"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        CreateDiscountRequest: {
+            /** Format: uuid */
+            place_id: string;
+            kind: components["schemas"]["DiscountKind"];
+            status?: components["schemas"]["DiscountStatus"];
+            title: string;
+            description?: string | null;
+            /** @description Required for kind=percent_off. */
+            percent_off?: number | null;
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
+            schedule?: components["schemas"]["ScheduleWindow"][];
+            /**
+             * Format: uuid
+             * @description An image from POST /manage/images. Only an image the caller uploaded (any image, for an admin) — otherwise 422.
+             */
+            image_id?: string | null;
+        };
+        /** @description Omitted fields are unchanged; null clears a nullable field. No place_id or kind — both are immutable, see decisions.md M1-06 #4. */
+        UpdateDiscountRequest: {
+            title?: string;
+            status?: components["schemas"]["DiscountStatus"];
+            description?: string | null;
+            percent_off?: number | null;
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
+            schedule?: components["schemas"]["ScheduleWindow"][] | null;
+            /**
+             * Format: uuid
+             * @description An image from POST /manage/images, or null to remove the picture. Only an image the caller uploaded (any image, for an admin), unless it is the current one — otherwise 422.
+             */
+            image_id?: string | null;
         };
     };
     responses: {
@@ -982,6 +1290,15 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description The request body exceeds the 5 MB upload limit. */
+        PayloadTooLarge: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
         /** @description No user exists with this id (or it has been soft-deleted). */
         UserNotFound: {
             headers: {
@@ -1018,6 +1335,15 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description No discount exists with this id — or it does, but the actor may not operate its place. Deliberately indistinguishable, as with PlaceNotFound. */
+        DiscountNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
     };
     parameters: {
         /** @description UUIDv7 of the target user. */
@@ -1028,6 +1354,10 @@ export interface components {
         ManagerUserIdPath: string;
         /** @description UUIDv7 of the target place. */
         PlaceIdPath: string;
+        /** @description UUIDv7 of the owner being detached. */
+        OwnerUserIdPath: string;
+        /** @description UUIDv7 of the target discount. */
+        DiscountIdPath: string;
     };
     requestBodies: never;
     headers: never;
@@ -1289,6 +1619,28 @@ export interface operations {
             };
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listUsersAdmin: {
@@ -1967,6 +2319,266 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    addManagedPlaceOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddManagerRequest"];
+            };
+        };
+        responses: {
+            /** @description The place, with the updated owner list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedPlaceEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    removeManagedPlaceOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target place. */
+                id: components["parameters"]["PlaceIdPath"];
+                /** @description UUIDv7 of the owner being detached. */
+                userId: components["parameters"]["OwnerUserIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner detached (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+        };
+    };
+    searchOwnerCandidates: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of matching owners. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignableUserListEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    uploadImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadImageRequest"];
+            };
+        };
+        responses: {
+            /** @description Image stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            413: components["responses"]["PayloadTooLarge"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listManagedDiscounts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                place_id?: string;
+                city_id?: string;
+                status?: components["schemas"]["DiscountStatus"];
+                kind?: components["schemas"]["DiscountKind"];
+                /** @description Case-insensitive substring match on title. */
+                q?: string;
+                /** @description Keep only discounts whose starts_on..ends_on range contains this date. */
+                valid_on?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of discounts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscountListEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createManagedDiscount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiscountRequest"];
+            };
+        };
+        responses: {
+            /** @description Discount created. */
+            201: {
+                headers: {
+                    /** @description /v1/manage/discounts/{id} of the new discount. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscountEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["PlaceNotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getManagedDiscount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target discount. */
+                id: components["parameters"]["DiscountIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The discount. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscountEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["DiscountNotFound"];
+        };
+    };
+    deleteManagedDiscount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target discount. */
+                id: components["parameters"]["DiscountIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discount deleted (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["DiscountNotFound"];
+        };
+    };
+    updateManagedDiscount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUIDv7 of the target discount. */
+                id: components["parameters"]["DiscountIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiscountRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated discount. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscountEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["DiscountNotFound"];
             422: components["responses"]["ValidationFailed"];
         };
     };
