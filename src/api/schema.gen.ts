@@ -21,6 +21,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/email/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a one-time sign-in code (client app)
+         * @description Passwordless sign-in for the client app. The same code signs in an existing account or creates a new one, so this answers identically whether or not the email is registered. Requesting a code retires any earlier one for the email. A new code can be requested once per `resend_after_seconds`, and at most LOGIN_CODE_DAILY_LIMIT times per 24 hours. See decisions.md M1-08.
+         */
+        post: operations["requestEmailLoginCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in (or sign up) with an emailed code
+         * @description Checks the code and starts a session. On first use it creates the account with the email already verified and no password — `is_new_user` is then true and the app should ask for a name (PATCH /me). An existing account whose email was never verified is claimed: its password is cleared, since whoever set it never proved they own the mailbox. Each wrong code counts; the LOGIN_CODE_MAX_ATTEMPTS-th wrong code burns it.
+         */
+        post: operations["verifyEmailLoginCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in (or sign up) with a Google ID token
+         * @description The app signs in with the native Google SDK and sends the ID token it got. The token must be issued for one of GOOGLE_CLIENT_IDS. A first sign-in links to the account with the same Google-verified email, or creates one named after the Google profile.
+         */
+        post: operations["signInWithGoogle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/apple": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in (or sign up) with an Apple identity token
+         * @description The app signs in with Sign in with Apple and sends the identity token. The token must be issued for one of APPLE_CLIENT_IDS (the bundle id). If the app passed SHA-256(nonce) to Apple, send the raw nonce here. Apple gives the user's name to the app only on the first authorization, outside the token — send it as display_name then; it is used only if the account has no name yet.
+         */
+        post: operations["signInWithApple"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -169,7 +249,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change the signed-in user's own profile
+         * @description Currently only the display name — the name step after a first sign-in by email code. 1 to 80 characters after trimming.
+         */
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/admin/users": {
@@ -768,6 +852,58 @@ export interface components {
             data: components["schemas"]["Session"];
             meta: Record<string, never>;
         };
+        EmailCodeRequest: {
+            /** Format: email */
+            email: string;
+        };
+        EmailCodeSent: {
+            /**
+             * @description Number of digits — how many input cells to draw.
+             * @example 4
+             */
+            code_length: number;
+            /** @example 600 */
+            expires_in_seconds: number;
+            /**
+             * @description Start the "send again" countdown from this.
+             * @example 60
+             */
+            resend_after_seconds: number;
+        };
+        EmailCodeSentEnvelope: {
+            data: components["schemas"]["EmailCodeSent"];
+            meta: Record<string, never>;
+        };
+        EmailCodeVerifyRequest: {
+            /** Format: email */
+            email: string;
+            /** @example 4821 */
+            code: string;
+        };
+        ProviderSignInRequest: {
+            /** @description The OpenID Connect ID token from the provider's native SDK. */
+            id_token: string;
+            /** @description Optional raw nonce. When sent, the token's nonce claim must match it (Apple: its SHA-256 hex). */
+            nonce?: string;
+            /** @description Apple only: the name Apple handed to the app on the first authorization. Used only if the account has no name yet. */
+            display_name?: string;
+        };
+        SignIn: {
+            /** @description Short-lived JWT (HS256). Send as `Authorization: Bearer <token>`. */
+            access_token: string;
+            /** @description Opaque, single-use; rotates on every /auth/refresh call. */
+            refresh_token: string;
+            user: components["schemas"]["User"];
+            /** @description True when this sign-in created the account — show the name step. */
+            is_new_user: boolean;
+        };
+        SignInEnvelope: {
+            data: components["schemas"]["SignIn"];
+            meta: Record<string, never>;
+        };
+        UpdateMeRequest: {
+            display_name: string;
+        };
         RefreshTokenRequest: {
             refresh_token: string;
         };
@@ -1272,6 +1408,33 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /** @description `id_token_invalid` — the provider token's signature, issuer, audience, expiry or nonce did not check out. */
+        IDTokenInvalid: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description `provider_email_missing` — the provider did not vouch for an email, so no account can be created or linked. The app should offer email sign-in instead. */
+        ProviderEmailMissing: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description `provider_disabled` — this sign-in method has no client ids configured on the server. */
+        ProviderDisabled: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
         /** @description Missing, malformed, expired, or otherwise invalid access token. */
         Unauthenticated: {
             headers: {
@@ -1392,6 +1555,162 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+        };
+    };
+    requestEmailLoginCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Code sent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeSentEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            422: components["responses"]["ValidationFailed"];
+            /** @description `login_code_too_soon` (a code was sent less than resend_after_seconds ago), `login_code_limit_reached` (daily cap) — both carry a `Retry-After` header and `details.retry_after_seconds` — or `rate_limited` from the endpoint limiter. */
+            429: {
+                headers: {
+                    /** @description Seconds to wait. Absent on `rate_limited`. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    verifyEmailLoginCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInEnvelope"];
+                };
+            };
+            /** @description `malformed_body`; `login_code_invalid` (wrong, expired, already used, or never sent — deliberately indistinguishable); or `login_code_attempts_exceeded` (the code is burned, request a new one). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description `account_blocked`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    signInWithGoogle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["IDTokenInvalid"];
+            /** @description `account_blocked`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            422: components["responses"]["ProviderEmailMissing"];
+            429: components["responses"]["RateLimited"];
+            503: components["responses"]["ProviderDisabled"];
+        };
+    };
+    signInWithApple: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["IDTokenInvalid"];
+            /** @description `account_blocked`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            422: components["responses"]["ProviderEmailMissing"];
+            429: components["responses"]["RateLimited"];
+            503: components["responses"]["ProviderDisabled"];
         };
     };
     registerUser: {
@@ -1641,6 +1960,34 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeEnvelope"];
+                };
+            };
+            400: components["responses"]["MalformedBody"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     listUsersAdmin: {
