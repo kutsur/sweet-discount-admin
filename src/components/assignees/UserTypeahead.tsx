@@ -1,26 +1,39 @@
+import type { AssigneeTexts } from "./assigneeTexts";
 import { Autocomplete, TextField } from "@mui/material";
 import { useState } from "react";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import type { AdminUser } from "../users/api";
-import { useManagerSearch } from "./queries";
 
-interface ManagerTypeaheadProps {
-  excludeIds: string[];
-  onSelect: (user: AdminUser) => void;
-  disabled?: boolean;
-  placeholder?: string;
+/** The few fields a picker needs — AdminUser and AssignableUser both satisfy it. */
+export interface UserCandidate {
+  id: string;
+  email: string;
+  display_name: string;
 }
 
-/** Typeahead over GET /admin/users/search?role=manager — shared by the create form and the city card. */
-export function ManagerTypeahead({ excludeIds, onSelect, disabled, placeholder }: ManagerTypeaheadProps) {
+/** A search hook returning a page of candidates — e.g. managers, or owners. Must be a stable, module-level hook. */
+export type UserSearchHook = (query: string) => {
+  data?: { items: UserCandidate[] };
+  isFetching: boolean;
+};
+
+interface UserTypeaheadProps {
+  useSearch: UserSearchHook;
+  excludeIds: string[];
+  onSelect: (user: UserCandidate) => void;
+  texts: Pick<AssigneeTexts, "searchPlaceholder" | "searchPrompt" | "searchEmpty">;
+  disabled?: boolean;
+}
+
+/** Debounced typeahead over any assign-a-user search endpoint. */
+export function UserTypeahead({ useSearch, excludeIds, onSelect, texts, disabled }: UserTypeaheadProps) {
   const [inputValue, setInputValue] = useState("");
   const debouncedQuery = useDebouncedValue(inputValue, 350);
-  const { data, isFetching } = useManagerSearch(debouncedQuery);
+  const { data, isFetching } = useSearch(debouncedQuery);
 
   const options = (data?.items ?? []).filter((candidate) => !excludeIds.includes(candidate.id));
 
   return (
-    <Autocomplete<AdminUser>
+    <Autocomplete<UserCandidate>
       disabled={disabled}
       options={options}
       filterOptions={(opts) => opts}
@@ -36,13 +49,13 @@ export function ManagerTypeahead({ excludeIds, onSelect, disabled, placeholder }
       getOptionLabel={(user) => `${user.display_name} <${user.email}>`}
       isOptionEqualToValue={(a, b) => a.id === b.id}
       loading={isFetching}
-      noOptionsText={inputValue.length ? "No managers found" : "Type to search managers"}
+      noOptionsText={inputValue.length ? texts.searchEmpty : texts.searchPrompt}
       renderInput={(params) => (
         <TextField
           {...params}
           size="small"
-          placeholder={placeholder ?? "Search managers by email or name…"}
-          helperText={isFetching ? "Searching…" : " "}
+          placeholder={texts.searchPlaceholder}
+          helperText={isFetching ? "Поиск…" : " "}
         />
       )}
       renderOption={(props, user) => (

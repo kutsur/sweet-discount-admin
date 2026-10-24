@@ -18,8 +18,8 @@ export function CategorySelect({ value, onChange, disabled, error }: CategorySel
   const helperText =
     error ??
     (loadError
-      ? "Could not load the category list."
-      : `Up to ${MAX_CATEGORIES_PER_PLACE} categories per place.`);
+      ? "Не удалось загрузить список категорий."
+      : `Не более ${MAX_CATEGORIES_PER_PLACE} категорий у заведения.`);
 
   return (
     <Autocomplete<PlaceCategory, true>
@@ -45,8 +45,8 @@ export function CategorySelect({ value, onChange, disabled, error }: CategorySel
       renderInput={(params) => (
         <TextField
           {...params}
-          label="Categories"
-          placeholder={atLimit ? undefined : "Add a category…"}
+          label="Категории"
+          placeholder={atLimit ? undefined : "Добавить категорию…"}
           error={Boolean(error) || Boolean(loadError)}
           helperText={helperText}
         />

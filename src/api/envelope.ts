@@ -1,3 +1,5 @@
+import { apiErrorText } from "../lib/apiErrorText";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -26,14 +28,11 @@ interface FetchResult<TData> {
   response: Response;
 }
 
-function toApiError(response: Response, error?: ErrorBody): ApiError {
+/** The message is the Russian text for the code (apiErrorText); details stay as sent. */
+export function toApiError(response: Response, error?: ErrorBody): ApiError {
   const body = error?.error;
-  return new ApiError(
-    response.status,
-    body?.code ?? "unknown_error",
-    body?.message ?? "Something went wrong.",
-    body?.details ?? null,
-  );
+  const code = body?.code ?? (response.status === 429 ? "rate_limited" : "unknown_error");
+  return new ApiError(response.status, code, apiErrorText(code), body?.details ?? null);
 }
 
 /** Unwraps a `{data: T, meta}` success envelope, throwing ApiError from the `{error}` envelope on failure. */

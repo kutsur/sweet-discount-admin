@@ -22,12 +22,12 @@ export function NotFoundPage() {
         >
           <SearchOffIcon />
         </Box>
-        <Typography variant="h5">Page not found</Typography>
+        <Typography variant="h5">Страница не найдена</Typography>
         <Typography variant="body2" color="text.secondary">
-          The page you're looking for doesn't exist or may have been moved.
+          Такой страницы нет или она была перемещена.
         </Typography>
-        <Button variant="contained" onClick={() => navigate("/users")} sx={{ mt: 1 }}>
-          Back to Users
+        <Button variant="contained" onClick={() => navigate("/")} sx={{ mt: 1 }}>
+          На главную
         </Button>
       </Stack>
     </Box>

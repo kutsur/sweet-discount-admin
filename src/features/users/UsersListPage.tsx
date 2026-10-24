@@ -18,7 +18,7 @@ export function UsersListPage() {
 
   return (
     <Box>
-      <PageHeader title="Users" subtitle="Search, review and moderate registered accounts." />
+      <PageHeader title="Пользователи" subtitle="Просмотр и модерация зарегистрированных учётных записей." />
       <ErrorAlert error={error} />
       <Paper sx={{ overflow: "hidden" }}>
         <DataGrid

@@ -27,9 +27,9 @@ export class AppErrorBoundary extends Component<Props, State> {
 
     return (
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, mt: 8 }}>
-        <Typography variant="h5">Something went wrong</Typography>
+        <Typography variant="h5">Что-то пошло не так</Typography>
         <Button variant="contained" onClick={() => window.location.reload()}>
-          Reload
+          Перезагрузить
         </Button>
       </Box>
     );

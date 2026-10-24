@@ -15,16 +15,16 @@ import {
 } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../../auth/useAuth";
-import { useIsAdmin } from "../../auth/useIsAdmin";
+import { useMe } from "../../auth/useMe";
 import { logout } from "../../features/auth/logout";
 import { ACCENT } from "../../theme/theme";
-import { navItems } from "./navConfig";
+import { navItemsFor } from "./navConfig";
 
 const DRAWER_WIDTH = 248;
 
 export function AppShell() {
   const { user } = useAuth();
-  const { isAdmin } = useIsAdmin();
+  const { role } = useMe();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -59,40 +59,33 @@ export function AppShell() {
         }}
       >
         <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", px: 3, py: 3 }}>
-          <Box
-            component="img"
-            src="/favicon.svg"
-            alt=""
-            sx={{ width: 28, height: 27, display: "block" }}
-          />
+          <Box component="img" src="/favicon.svg" alt="" sx={{ width: 28, height: 27, display: "block" }} />
           <Box>
             <Typography variant="subtitle1" sx={{ lineHeight: 1.1, color: "#fff" }}>
               Sweet Discount
             </Typography>
             <Typography variant="caption" sx={{ color: alpha("#fff", 0.55) }}>
-              Admin console
+              Панель управления
             </Typography>
           </Box>
         </Stack>
 
         <List sx={{ flexGrow: 1, px: 1.5 }}>
-          {navItems
-            .filter((item) => !item.adminOnly || isAdmin)
-            .map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-              return (
-                <ListItemButton key={item.path} selected={isActive} onClick={() => navigate(item.path)}>
-                  <ListItemIcon>
-                    <Icon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
-                    slotProps={{ primary: { sx: { fontWeight: isActive ? 600 : 500 } } }}
-                  />
-                </ListItemButton>
-              );
-            })}
+          {navItemsFor(role).map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname.startsWith(item.path);
+            return (
+              <ListItemButton key={item.path} selected={isActive} onClick={() => navigate(item.path)}>
+                <ListItemIcon>
+                  <Icon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  slotProps={{ primary: { sx: { fontWeight: isActive ? 600 : 500 } } }}
+                />
+              </ListItemButton>
+            );
+          })}
         </List>
 
         <Divider sx={{ borderColor: alpha("#fff", 0.1) }} />
@@ -108,7 +101,7 @@ export function AppShell() {
               {user?.email}
             </Typography>
           </Box>
-          <Tooltip title="Log out">
+          <Tooltip title="Выйти">
             <IconButton
               onClick={handleLogout}
               size="small"

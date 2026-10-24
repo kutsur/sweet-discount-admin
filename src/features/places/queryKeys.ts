@@ -7,4 +7,5 @@ export const placesKeys = {
   details: () => [...placesKeys.all, "detail"] as const,
   detail: (id: string) => [...placesKeys.details(), id] as const,
   categories: () => ["placeCategories"] as const,
+  ownerSearch: (q: string) => ["ownerCandidates", q] as const,
 };

@@ -26,11 +26,11 @@ export function CitiesListPage() {
   return (
     <Box>
       <PageHeader
-        title="Cities"
-        subtitle="Manage the cities shown in the public listing and their managers."
+        title="Города"
+        subtitle="Города в публичном списке и их менеджеры."
         actions={
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/cities/new")}>
-            Add city
+            Добавить город
           </Button>
         }
       />
@@ -56,9 +56,9 @@ export function CitiesListPage() {
 
       <ConfirmDialog
         open={Boolean(cityToDelete)}
-        title="Delete this city?"
-        description={`${cityToDelete?.name ?? ""} will be removed from the public listing. This can be undone only from the database.`}
-        confirmLabel="Delete"
+        title="Удалить город?"
+        description={`${cityToDelete?.name ?? ""} исчезнет из публичного списка. Восстановить можно только через базу данных.`}
+        confirmLabel="Удалить"
         destructive
         loading={deleteCity.isPending}
         onCancel={() => setCityToDelete(null)}

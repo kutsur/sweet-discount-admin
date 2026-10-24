@@ -9,6 +9,7 @@ export type PlaceStatus = components["schemas"]["PlaceStatus"];
 export type OpeningHours = components["schemas"]["OpeningHours"];
 export type CreatePlaceRequest = components["schemas"]["CreatePlaceRequest"];
 export type UpdatePlaceRequest = components["schemas"]["UpdatePlaceRequest"];
+export type AssignableUser = components["schemas"]["AssignableUser"];
 
 export interface ListPlacesParams {
   limit: number;
@@ -17,9 +18,9 @@ export interface ListPlacesParams {
   status?: PlaceStatus;
 }
 
-// /manage/places, not /admin/places: the backend opens this group to admin *and*
-// manager, and scopes a manager's rows to the cities they're attached to. See the
-// backend's router.go comment on the /v1/manage/places group.
+// /manage/places, not /admin/places: the backend opens reads to admin, manager and
+// owner, scoping a manager to their cities and an owner to their places; mutations are
+// admin/manager only. See the backend's router.go comment on the /v1/manage/places group.
 export function fetchPlaces({ limit, offset, cityId, status }: ListPlacesParams) {
   return unwrapPage<ManagedPlaceListItem>(
     api.GET("/manage/places", {
@@ -51,6 +52,23 @@ export function approvePlace(id: string) {
 export function rejectPlace(id: string, reason: string) {
   return unwrap<ManagedPlace>(
     api.POST("/manage/places/{id}/reject", { params: { path: { id } }, body: { reason } }),
+  );
+}
+
+export function addPlaceOwner(id: string, userId: string) {
+  return unwrap<ManagedPlace>(
+    api.POST("/manage/places/{id}/owners", { params: { path: { id } }, body: { user_id: userId } }),
+  );
+}
+
+export function removePlaceOwner(id: string, userId: string) {
+  return unwrapVoid(api.DELETE("/manage/places/{id}/owners/{userId}", { params: { path: { id, userId } } }));
+}
+
+/** Active role=owner accounts — open to managers too, unlike /admin/users/search. */
+export function searchOwnerCandidates(q: string) {
+  return unwrapPage<AssignableUser>(
+    api.GET("/manage/owner-candidates", { params: { query: { q: q || undefined, limit: 20, offset: 0 } } }),
   );
 }
 

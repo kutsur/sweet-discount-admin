@@ -82,3 +82,35 @@ export function useRejectPlace(id: string) {
     },
   });
 }
+
+export function useOwnerSearch(q: string) {
+  return useQuery({
+    queryKey: placesKeys.ownerSearch(q),
+    queryFn: () => placesApi.searchOwnerCandidates(q),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAddPlaceOwner(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => placesApi.addPlaceOwner(id, userId),
+    onSuccess: (place: ManagedPlace) => {
+      queryClient.setQueryData(placesKeys.detail(id), place);
+    },
+  });
+}
+
+export function useRemovePlaceOwner(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => placesApi.removePlaceOwner(id, userId).then(() => userId),
+    onSuccess: (userId) => {
+      queryClient.setQueryData<ManagedPlace | undefined>(placesKeys.detail(id), (current) =>
+        current
+          ? { ...current, owners: current.owners.filter((owner) => owner.user_id !== userId) }
+          : current,
+      );
+    },
+  });
+}

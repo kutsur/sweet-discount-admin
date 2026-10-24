@@ -23,12 +23,12 @@ export function ForbiddenPage() {
         >
           <BlockIcon />
         </Box>
-        <Typography variant="h5">You don't have access to this</Typography>
+        <Typography variant="h5">Нет доступа</Typography>
         <Typography variant="body2" color="text.secondary">
-          Your account doesn't have permission to perform this action.
+          У вашей учётной записи нет прав на это действие.
         </Typography>
-        <Button variant="contained" onClick={() => navigate("/users")} sx={{ mt: 1 }}>
-          Back to Users
+        <Button variant="contained" onClick={() => navigate("/", { replace: true })} sx={{ mt: 1 }}>
+          На главную
         </Button>
       </Stack>
     </Box>

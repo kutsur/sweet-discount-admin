@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router";
 import { api } from "../../api/client";
-import { ApiError } from "../../api/envelope";
+import { ApiError, toApiError } from "../../api/envelope";
+import { apiErrorText } from "../../lib/apiErrorText";
 import { sessionEstablished } from "../../auth/authSlice";
 import { tokenStorage } from "../../auth/tokenStorage";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
@@ -31,14 +32,7 @@ export function LoginPage() {
       const { data, error: apiError, response } = await api.POST("/auth/login", { body: values });
 
       if (apiError || !data) {
-        setError(
-          new ApiError(
-            response.status,
-            apiError?.error.code ?? "unknown_error",
-            apiError?.error.message ?? "Invalid email or password.",
-            apiError?.error.details ?? null,
-          ),
-        );
+        setError(toApiError(response, apiError));
         return;
       }
 
@@ -46,10 +40,11 @@ export function LoginPage() {
       dispatch(sessionEstablished({ accessToken: access_token, user }));
       tokenStorage.save({ refreshToken: refresh_token, user });
 
-      const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/users";
+      // "/" lets HomeRedirect pick the first section this role can open.
+      const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
       navigate(from, { replace: true });
     } catch {
-      setError(new ApiError(0, "network_error", "Couldn't reach the server. Check your connection.", null));
+      setError(new ApiError(0, "network_error", apiErrorText("network_error"), null));
     }
   };
 
@@ -64,12 +59,15 @@ export function LoginPage() {
         p: 2,
       }}
     >
-      <Paper elevation={0} sx={{ p: 5, width: 380, border: "none", boxShadow: "0 24px 64px rgba(0,0,0,0.35)" }}>
+      <Paper
+        elevation={0}
+        sx={{ p: 5, width: 380, border: "none", boxShadow: "0 24px 64px rgba(0,0,0,0.35)" }}
+      >
         <Stack spacing={0.5} sx={{ alignItems: "center", mb: 4 }}>
           <Box component="img" src="/favicon.svg" alt="" sx={{ width: 40, height: 38, mb: 1.5 }} />
           <Typography variant="h5">Sweet Discount</Typography>
           <Typography variant="body2" color="text.secondary">
-            Sign in to the admin console
+            Вход в панель управления
           </Typography>
         </Stack>
 
@@ -78,7 +76,7 @@ export function LoginPage() {
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
           <Stack spacing={2}>
             <TextField
-              label="Email"
+              label="Эл. почта"
               type="email"
               fullWidth
               autoComplete="email"
@@ -87,7 +85,7 @@ export function LoginPage() {
               {...register("email")}
             />
             <TextField
-              label="Password"
+              label="Пароль"
               type="password"
               fullWidth
               autoComplete="current-password"
@@ -95,8 +93,15 @@ export function LoginPage() {
               helperText={errors.password?.message}
               {...register("password")}
             />
-            <Button type="submit" variant="contained" fullWidth size="large" sx={{ mt: 1 }} disabled={isSubmitting}>
-              Log in
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              sx={{ mt: 1 }}
+              disabled={isSubmitting}
+            >
+              Войти
             </Button>
           </Stack>
         </Box>

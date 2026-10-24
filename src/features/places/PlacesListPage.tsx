@@ -3,6 +3,8 @@ import { Box, Button, MenuItem, Paper, Stack, TextField } from "@mui/material";
 import { DataGrid, type GridPaginationModel } from "@mui/x-data-grid";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { ROLES } from "../../auth/roles";
+import { useHasRole } from "../../auth/useMe";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ErrorAlert } from "../../components/feedback/ErrorAlert";
 import { PageHeader } from "../../components/layout/PageHeader";
@@ -34,6 +36,7 @@ export function PlacesListPage() {
     status: status || undefined,
   });
   const deletePlace = useDeletePlace();
+  const canManage = useHasRole(ROLES.placeStaff);
 
   const cityNameById = useMemo(
     () => new Map((cities?.items ?? []).map((city) => [city.id, city.name])),
@@ -48,26 +51,33 @@ export function PlacesListPage() {
     setPaginationModel((current) => ({ ...current, page: 0 }));
   };
 
-  const columns = buildPlaceColumns({ cityNameById, onDeleteRequest: setPlaceToDelete });
+  const columns = buildPlaceColumns({
+    cityNameById,
+    onDeleteRequest: canManage ? setPlaceToDelete : undefined,
+  });
   const selectedCityName = cityId ? cityNameById.get(cityId) : undefined;
 
   return (
     <Box>
       <PageHeader
-        title="Places"
+        title="Заведения"
         subtitle={
           selectedCityName
-            ? `Venues in ${selectedCityName}. New places start as pending until approved.`
-            : "Venues across the cities you manage. New places start as pending until approved."
+            ? `Заведения в городе ${selectedCityName}. Новые заведения ждут модерации.`
+            : canManage
+              ? "Заведения в ваших городах. Новые заведения ждут модерации."
+              : "Ваши заведения."
         }
         actions={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate(cityId ? `/places/new?city_id=${cityId}` : "/places/new")}
-          >
-            Add place
-          </Button>
+          canManage && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate(cityId ? `/places/new?city_id=${cityId}` : "/places/new")}
+            >
+              Добавить заведение
+            </Button>
+          )
         }
       />
 
@@ -77,12 +87,12 @@ export function PlacesListPage() {
         <TextField
           select
           size="small"
-          label="City"
+          label="Город"
           value={cityId}
           onChange={(event) => setFilter("city_id", event.target.value)}
           sx={{ minWidth: 200 }}
         >
-          <MenuItem value="">All cities</MenuItem>
+          <MenuItem value="">Все города</MenuItem>
           {(cities?.items ?? []).map((city) => (
             <MenuItem key={city.id} value={city.id}>
               {city.name}
@@ -92,12 +102,12 @@ export function PlacesListPage() {
         <TextField
           select
           size="small"
-          label="Status"
+          label="Статус"
           value={status}
           onChange={(event) => setFilter("status", event.target.value)}
           sx={{ minWidth: 180 }}
         >
-          <MenuItem value="">Any status</MenuItem>
+          <MenuItem value="">Любой статус</MenuItem>
           {PLACE_STATUSES.map((value) => (
             <MenuItem key={value} value={value}>
               {PLACE_STATUS_LABEL[value]}
@@ -125,9 +135,9 @@ export function PlacesListPage() {
 
       <ConfirmDialog
         open={Boolean(placeToDelete)}
-        title="Delete this place?"
-        description={`${placeToDelete?.name ?? ""} will be hidden from the public listing. This can be undone only from the database.`}
-        confirmLabel="Delete"
+        title="Удалить заведение?"
+        description={`${placeToDelete?.name ?? ""} исчезнет из публичного списка. Восстановить можно только через базу данных.`}
+        confirmLabel="Удалить"
         destructive
         loading={deletePlace.isPending}
         onCancel={() => setPlaceToDelete(null)}
