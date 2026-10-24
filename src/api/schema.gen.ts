@@ -32,7 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Email a one-time sign-in code (client app)
-         * @description Passwordless sign-in for the client app. The same code signs in an existing account or creates a new one, so this answers identically whether or not the email is registered. Requesting a code retires any earlier one for the email. A new code can be requested once per `resend_after_seconds`, and at most LOGIN_CODE_DAILY_LIMIT times per 24 hours. See decisions.md M1-08.
+         * @description Passwordless sign-in for the client app. The same code signs in an existing account or creates a new one, so this answers identically whether or not the email is registered. Requesting a code retires any earlier one for the email. A new code can be requested once per `resend_after_seconds`, and at most LOGIN_CODE_DAILY_LIMIT times per 24 hours. The first request for an unknown email creates a pending account (unverified, no password) that the admin panel lists; the code later activates it. See decisions.md M1-08 #12.
          */
         post: operations["requestEmailLoginCode"];
         delete?: never;
@@ -52,7 +52,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in (or sign up) with an emailed code
-         * @description Checks the code and starts a session. On first use it creates the account with the email already verified and no password — `is_new_user` is then true and the app should ask for a name (PATCH /me). An existing account whose email was never verified is claimed: its password is cleared, since whoever set it never proved they own the mailbox. Each wrong code counts; the LOGIN_CODE_MAX_ATTEMPTS-th wrong code burns it.
+         * @description Checks the code and starts a session. A pending account (created by the code request) or any other account whose email was never verified is claimed: its email is marked verified and any password is cleared, since whoever set it never proved they own the mailbox. `is_new_user` is then true and the app should ask for a name (PATCH /me). Each wrong code counts; the LOGIN_CODE_MAX_ATTEMPTS-th wrong code burns it.
          */
         post: operations["verifyEmailLoginCode"];
         delete?: never;
@@ -894,7 +894,7 @@ export interface components {
             /** @description Opaque, single-use; rotates on every /auth/refresh call. */
             refresh_token: string;
             user: components["schemas"]["User"];
-            /** @description True when this sign-in created the account — show the name step. */
+            /** @description True on the account's first confirmed sign-in (just created or still pending) — show the name step. */
             is_new_user: boolean;
         };
         SignInEnvelope: {
