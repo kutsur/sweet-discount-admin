@@ -59,7 +59,7 @@ export function DiscountsListPage() {
     <Box>
       <PageHeader
         title="Скидки"
-        subtitle="Предложения ваших заведений: скидки в процентах по дням, часам и датам."
+        subtitle="Предложения ваших заведений: скидки в процентах и сюрприз-боксы по дням, часам и датам."
         actions={
           <Button
             variant="contained"

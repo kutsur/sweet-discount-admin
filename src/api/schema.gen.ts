@@ -428,6 +428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cities/{slug}/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The client app's home feed for a city
+         * @description Public, like the city list. Two sections, each at most 20 cards: discounts (kind=percent_off) that are on today, nearest first; and surprise boxes still available today, the earliest pickup deadline first, then the fewest left. Only approved places and active offers within their dates appear; an offer whose windows for today are all over is left out. "Today" is the city's local date. Distances are measured from lat/lon, or from the city centre when they are omitted. See decisions.md M1-09.
+         */
+        get: operations["getCityFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/cities": {
         parameters: {
             query?: never;
@@ -721,7 +741,7 @@ export interface paths {
         put?: never;
         /**
          * Create a discount for a place
-         * @description role=admin, role=manager of the place's city, or role=owner of the place. An actor who may not operate the place gets 404 place_not_found (see decisions.md M1-04 #11). status defaults to active. kind decides which kind-specific fields are required — percent_off for kind=percent_off. See decisions.md M1-06.
+         * @description role=admin, role=manager of the place's city, or role=owner of the place. An actor who may not operate the place gets 404 place_not_found (see decisions.md M1-04 #11). status defaults to active. kind decides which kind-specific fields are required — percent_off for kind=percent_off; price_minor, currency_code, quantity_left and a non-empty schedule (the pickup windows) for kind=surprise_box. See decisions.md M1-06 and M1-09.
          */
         post: operations["createManagedDiscount"];
         delete?: never;
@@ -1261,10 +1281,10 @@ export interface components {
             meta: components["schemas"]["PaginationMeta"];
         };
         /**
-         * @description Which kind-specific terms a discount carries. text + CHECK in the database, extended additively (e.g. a future surprise_box) — see decisions.md M1-06 #3.
+         * @description Which kind-specific terms a discount carries: percent_off is a percentage off the bill; surprise_box is a bag of the day's leftovers at a reduced price, picked up within the schedule's windows. text + CHECK in the database, extended additively — see decisions.md M1-06 #3 and M1-09.
          * @enum {string}
          */
-        DiscountKind: "percent_off";
+        DiscountKind: "percent_off" | "surprise_box";
         /**
          * @description active is offered (within its dates and schedule); paused is switched off by the venue.
          * @enum {string}
@@ -1276,12 +1296,14 @@ export interface components {
             starts_at: string;
             ends_at: string;
         };
-        /** @description An uploaded picture, re-encoded server-side as a JPEG with the longest edge at most 1600 px. url is absolute (api-contract.md rule 4) — use it as-is. */
+        /** @description An uploaded picture, re-encoded server-side as a JPEG with the longest edge at most 1600 px. url is absolute (api-contract.md rule 4) — use it as-is. thumb_url is a copy at most 480 px on its long edge, for list cards and thumbnails (the original's URL for images uploaded before thumbnails existed). */
         Image: {
             /** Format: uuid */
             id: string;
             /** Format: uri */
             url: string;
+            /** Format: uri */
+            thumb_url: string;
             width: number;
             height: number;
         };
@@ -1312,6 +1334,14 @@ export interface components {
             description: string | null;
             /** @description Set for kind=percent_off, null otherwise. */
             percent_off: number | null;
+            /** @description The box's price in minor units of currency_code. Set for kind=surprise_box, null otherwise. */
+            price_minor: number | null;
+            /** @description The box's worth at full price (shown struck through), greater than price_minor; optional. */
+            original_price_minor: number | null;
+            /** @description ISO 4217 code. Set for kind=surprise_box, null otherwise. */
+            currency_code: string | null;
+            /** @description Boxes the venue still has today. Set for kind=surprise_box, null otherwise. */
+            quantity_left: number | null;
             status: components["schemas"]["DiscountStatus"];
             /**
              * Format: date
@@ -1351,6 +1381,14 @@ export interface components {
             description?: string | null;
             /** @description Required for kind=percent_off. */
             percent_off?: number | null;
+            /** @description The box's price in minor units of currency_code. Required for kind=surprise_box. */
+            price_minor?: number | null;
+            /** @description The box's worth at full price (shown struck through), greater than price_minor; optional. */
+            original_price_minor?: number | null;
+            /** @description ISO 4217 code. Required for kind=surprise_box. */
+            currency_code?: string | null;
+            /** @description Boxes the venue still has today. Required for kind=surprise_box. */
+            quantity_left?: number | null;
             /** Format: date */
             starts_on?: string | null;
             /** Format: date */
@@ -1368,6 +1406,14 @@ export interface components {
             status?: components["schemas"]["DiscountStatus"];
             description?: string | null;
             percent_off?: number | null;
+            /** @description The box's price in minor units of currency_code. */
+            price_minor?: number | null;
+            /** @description The box's worth at full price (shown struck through), greater than price_minor; optional. */
+            original_price_minor?: number | null;
+            /** @description ISO 4217 code. */
+            currency_code?: string | null;
+            /** @description Boxes the venue still has today. */
+            quantity_left?: number | null;
             /** Format: date */
             starts_on?: string | null;
             /** Format: date */
@@ -1378,6 +1424,48 @@ export interface components {
              * @description An image from POST /manage/images, or null to remove the picture. Only an image the caller uploaded (any image, for an admin), unless it is the current one — otherwise 422.
              */
             image_id?: string | null;
+        };
+        /** @description One card of the city feed. Kind-specific fields follow Discount: percent_off for kind=percent_off, the price fields and quantity_left for kind=surprise_box, null otherwise. image is the offer's picture, or its place's when it has none. */
+        FeedOffer: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["DiscountKind"];
+            title: string;
+            description: string | null;
+            percent_off: number | null;
+            price_minor: number | null;
+            original_price_minor: number | null;
+            currency_code: string | null;
+            quantity_left: number | null;
+            /** @description The window that is running or still ahead today, venue-local "HH:MM" — a box's pickup time. ends_at < starts_at runs past midnight; "00:00"–"24:00" is the whole day. */
+            today: {
+                starts_at: string;
+                ends_at: string;
+            };
+            /** @description Metres from the request's lat/lon (or the city centre) to the place. */
+            distance_m: number;
+            image: components["schemas"]["Image"] | null;
+            place: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                address: string | null;
+                lat: number;
+                lon: number;
+            };
+        };
+        CityFeed: {
+            /** @description Today's headline numbers for the city: boxes still to be had (the sum of quantity_left) and places running a discount. Counted over the 100 nearest offers of each kind, so a large city's numbers are a lower bound. */
+            summary: {
+                boxes_today: number;
+                places_with_discounts: number;
+            };
+            discounts: components["schemas"]["FeedOffer"][];
+            boxes_ending_soon: components["schemas"]["FeedOffer"][];
+        };
+        CityFeedEnvelope: {
+            data: components["schemas"]["CityFeed"];
+            meta: Record<string, never>;
         };
     };
     responses: {
@@ -2249,6 +2337,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CityListEnvelope"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getCityFeed: {
+        parameters: {
+            query?: {
+                /** @description The user's latitude. Send together with lon, or neither. */
+                lat?: number;
+                /** @description The user's longitude. Send together with lat, or neither. */
+                lon?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The city's feed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityFeedEnvelope"];
+                };
+            };
+            /** @description No non-deleted city has this slug. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             422: components["responses"]["ValidationFailed"];

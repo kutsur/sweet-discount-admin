@@ -18,7 +18,7 @@ export function DiscountCreatePage() {
   const submit = async (payload: DiscountPayload) => {
     setPlaceError(null);
     if (!placeId) {
-      setPlaceError("Выберите заведение, в котором действует скидка.");
+      setPlaceError("Выберите заведение, в котором действует предложение.");
       return;
     }
     const discount = await createDiscount.mutateAsync({ ...payload, place_id: placeId });
@@ -27,9 +27,12 @@ export function DiscountCreatePage() {
 
   return (
     <Box sx={{ maxWidth: 760 }}>
-      <PageHeader title="Новая скидка" subtitle="Покупатели увидят её у заведения в выбранные дни и часы." />
+      <PageHeader
+        title="Новое предложение"
+        subtitle="Скидка или сюрприз-бокс. Покупатели увидят его у заведения в выбранные дни и часы."
+      />
       <DiscountForm
-        submitLabel="Создать скидку"
+        submitLabel="Создать"
         onSubmit={submit}
         onFieldError={(_field, message) => {
           setPlaceError(message);
@@ -44,7 +47,7 @@ export function DiscountCreatePage() {
               setPlaceError(null);
             }}
             error={placeError}
-            helperText="Скидка привязана к одному заведению, перенести её потом нельзя."
+            helperText="Предложение привязано к одному заведению, перенести его потом нельзя."
           />
         }
       />
