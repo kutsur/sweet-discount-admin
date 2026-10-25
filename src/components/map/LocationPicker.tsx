@@ -4,7 +4,7 @@ import L, { type LeafletMouseEvent } from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { LatLon } from "../../lib/geo";
 
@@ -68,6 +68,7 @@ export function LocationPicker({
         />
         <ClickToPick disabled={disabled} onPick={onChange} />
         <FollowCenter target={value ?? fallbackCenter ?? null} zoom={value ? POINT_ZOOM : OVERVIEW_ZOOM} />
+        <JumpToFallback center={fallbackCenter ?? null} />
         {value && <DraggableMarker value={value} disabled={disabled} onChange={onChange} />}
       </MapContainer>
     </Box>
@@ -96,6 +97,28 @@ function FollowCenter({ target, zoom }: { target: LatLon | null; zoom: number })
       map.setView(point, Math.max(map.getZoom(), zoom));
     }
   }, [map, lat, lon, zoom]);
+
+  return null;
+}
+
+/**
+ * Moves the map to the fallback center whenever it changes after mount — picking a city
+ * means "show me that city", even when it is already somewhere in the current view.
+ * The first render is skipped: the initial center already accounts for it, and on an
+ * existing place the point, not the city, decides the view.
+ */
+function JumpToFallback({ center }: { center: LatLon | null }) {
+  const map = useMap();
+  const lat = center?.lat;
+  const lon = center?.lon;
+  const previous = useRef({ lat, lon });
+
+  useEffect(() => {
+    if (previous.current.lat === lat && previous.current.lon === lon) return;
+    previous.current = { lat, lon };
+    if (lat === undefined || lon === undefined) return;
+    map.setView([lat, lon], OVERVIEW_ZOOM);
+  }, [map, lat, lon]);
 
   return null;
 }
